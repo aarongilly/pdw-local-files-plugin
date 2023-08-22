@@ -1,0 +1,20 @@
+{
+  "name": "pdw-files-plugin",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "A plugin for the PDW Package for working with local files",
+  "main": "index.js",
+  "scripts": {
+    "localtest": "tsc && node out/index.js"
+  },
+  "author": "Aaron Gillespie",
+  "license": "MIT",
+  "dependencies": {
+    "fast-csv": "^4.3.6",
+    "fs": "^0.0.1-security",
+    "pdw": "^0.0.8",
+    "typescript": "^5.1.6",
+    "xlsx": "^0.19.2",
+    "yaml": "^2.3.1"
+  }
+}
