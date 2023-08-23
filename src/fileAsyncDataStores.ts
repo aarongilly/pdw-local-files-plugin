@@ -822,7 +822,6 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
         return entryRow
     }
 
-
     static parseExcelTagRow(tagRow: any): pdw.TagLike {
         //check structure
         if (tagRow._deleted == undefined
