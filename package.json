@@ -1,6 +1,6 @@
 {
   "name": "pdw-files-plugin",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "type": "module",
   "main": "/fileAsyncDataStores.js",
   "types": "/fileAsyncDataStores.d.ts",
@@ -20,7 +20,7 @@
     "fs": "^0.0.1-security",
     "pdw": "^0.0.8",
     "typescript": "^5.1.6",
-    "xlsx": "^0.18.2",
+    "xlsx": "^0.18.5",
     "yaml": "^2.3.1"
   }
 }
