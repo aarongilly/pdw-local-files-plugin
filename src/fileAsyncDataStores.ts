@@ -822,37 +822,6 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
         return entryRow
     }
 
-    static parseExcelEntryPointRow(entryPointRow: any): pdw.EntryPointLike {
-        //check structure
-        if (entryPointRow._deleted == undefined
-            || entryPointRow._did == undefined
-            || entryPointRow._pid == undefined)
-            throw new Error('Cannot parseExcelEntryPointRow for ', entryPointRow);
-
-        entryPointRow = AsyncExcelTabular.parseExcelFirstFourColumns(entryPointRow);
-
-        entryPointRow._did = entryPointRow._did.toString(); //in case I got unlucky with an all-numeric SmallID
-        entryPointRow._pid = entryPointRow._pid.toString(); //in case I got unlucky with an all-numeric SmallID
-
-        if (!pdw.EntryPoint.isEntryPointLike(entryPointRow)) throw new Error('Failed to correctly parseExcelEntryPointRow for ', entryPointRow);
-
-        return entryPointRow
-    }
-
-    static parseExcelTagDefRow(tagDefRow: any): pdw.TagDefLike {
-        //check structure
-        if (tagDefRow._deleted == undefined
-            || tagDefRow._tid == undefined)
-            throw new Error('Cannot parseExcelTagDefRow for ', tagDefRow);
-
-        tagDefRow = AsyncExcelTabular.parseExcelFirstFourColumns(tagDefRow);
-
-        tagDefRow._did = tagDefRow._tid.toString(); //in case I got unlucky with an all-numeric SmallID
-
-        if (!pdw.TagDef.isTagDefLike(tagDefRow)) throw new Error('Failed to correctly parseExcelTagDefRow for ', tagDefRow);
-
-        return tagDefRow
-    }
 
     static parseExcelTagRow(tagRow: any): pdw.TagLike {
         //check structure
