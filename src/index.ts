@@ -1,6 +1,6 @@
 // import * as pdw from 'pdw/out/pdw.js';
 import * as pdw from '../../pdw/out/pdw.js' //cross-Git Repo referencing
-import { exportToFile } from './fileAsyncDataStores.js';
+import { exportToFile, importFromFile } from './fileAsyncDataStores.js';
 
 console.log(pdw.makeEpochStr());
 
@@ -9,14 +9,15 @@ console.log(pdw.parseTemporalFromEpochStr('1000000000').toLocaleString());
 
 const pdwRef = pdw.PDW.getInstance();
 
-createTestDataSet();
+// createTestDataSet();
+importFromFile('test-files/test.xlsx');
 
 let all = pdwRef.getAll({includeDeleted: 'yes'});
 
-exportToFile('test-files/test.csv', all);
-exportToFile('test-files/test.json', all);
-exportToFile('test-files/test.yaml', all);
-exportToFile('test-files/test.xlsx', all);
+// exportToFile('test-files/test.csv', all);
+// exportToFile('test-files/test.json', all);
+// exportToFile('test-files/test.yaml', all);
+exportToFile('test-files/test2.xlsx', all);
 
 /*
 let pdwRef = pdw.PDW.getInstance();
