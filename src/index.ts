@@ -2,22 +2,17 @@
 import * as pdw from '../../pdw/out/pdw.js' //cross-Git Repo referencing
 import { exportToFile, importFromFile } from './fileAsyncDataStores.js';
 
-console.log(pdw.makeEpochStr());
-
-console.log(pdw.parseTemporalFromEpochStr('1000000000').toLocaleString());
-
-
 const pdwRef = pdw.PDW.getInstance();
 
-// createTestDataSet();
-importFromFile('test-files/test.xlsx');
+await createTestDataSet();
+// await importFromFile('test-files/test.csv');
 
-let all = pdwRef.getAll({includeDeleted: 'yes'});
+let all = await pdwRef.getAll({includeDeleted: 'yes'});
 
-// exportToFile('test-files/test.csv', all);
-// exportToFile('test-files/test.json', all);
-// exportToFile('test-files/test.yaml', all);
-exportToFile('test-files/test2.xlsx', all);
+exportToFile('test-files/test.csv', all);
+exportToFile('test-files/test.json', all);
+exportToFile('test-files/test.yaml', all);
+exportToFile('test-files/test.xlsx', all);
 
 /*
 let pdwRef = pdw.PDW.getInstance();
@@ -32,8 +27,8 @@ log('Hello World!');
 */
 
 
-function createTestDataSet() {
-    const nightly = pdwRef.newDef({
+async function createTestDataSet() {
+    const nightly = await pdwRef.newDef({
         _created: '2023-07-10T20:02:30-05:00',
         _did: 'aaaa',
         _lbl: 'Nightly Review',
@@ -66,6 +61,7 @@ function createTestDataSet() {
                 _desc: '10 perfect 1 horrid',
                 _lbl: 'Satisfaction',
                 _pid: 'aaa3',
+                _rollup: pdw.Rollup.AVERAGE,
                 _type: pdw.PointType.NUMBER
             },
             {
@@ -73,11 +69,12 @@ function createTestDataSet() {
                 _desc: '10 perfect 1 horrid',
                 _lbl: 'Physical Health',
                 _pid: 'aaa4',
+                _rollup: pdw.Rollup.AVERAGE,
                 _type: pdw.PointType.NUMBER
             }
         ]
     });
-    const quotes = pdwRef.newDef({
+    const quotes = await pdwRef.newDef({
         _did: 'bbbb',
         _lbl: 'Quotes',
         _desc: 'Funny or good sayings',
@@ -93,13 +90,15 @@ function createTestDataSet() {
             _emoji: "🙊",
             _lbl: "Quoter",
             _desc: 'who said it',
+            _rollup: pdw.Rollup.COUNTOFEACH,
             _type: pdw.PointType.TEXT
         },
     })
-    const movies = pdwRef.newDef({
+    const movies = await pdwRef.newDef({
         _did: 'cccc',
         _lbl: 'Movie',
         _emoji: "🎬",
+        _tags: ['#media'],
         _scope: pdw.Scope.SECOND,
         'ccc1': {
             _lbl: 'Name',
@@ -108,31 +107,26 @@ function createTestDataSet() {
         'ccc2': {
             _lbl: 'First Watch?',
             _emoji: '🆕',
+            _rollup: pdw.Rollup.COUNTOFEACH,
             _type: pdw.PointType.BOOL
         }
     })
-    const book = pdwRef.newDef({
+    const book = await pdwRef.newDef({
         _did: 'dddd',
         _lbl: 'Book',
         _emoji: "📖",
+        _tags: ['#media'],
         _scope: pdw.Scope.SECOND,
         'ddd1': {
             _lbl: 'Name',
             _emoji: "📖",
+            _rollup: pdw.Rollup.COUNTUNIQUE
         },
     })
     /**
-     * A tag
-     */
-    const mediaTag = pdwRef.newTag({
-        _lbl: 'media',
-        _dids: ['dddd', 'cccc'],
-        _tid: 'tag1'
-    });
-    /**
      * Several entries
      */
-    let quote = quotes.newEntry({
+    let quote = await quotes.newEntry({
         _eid: 'lkfkuxon-f9ys',
         _period: '2023-07-21T14:02:13',
         _created: '2023-07-22T20:02:13Z',
@@ -142,7 +136,7 @@ function createTestDataSet() {
         'bbb2': 'Michael Jordan' //updated later
     });
 
-    nightly.newEntry({
+    await nightly.newEntry({
         _uid: 'lkfkuxo8-9ysw',
         _eid: 'lkfkuxol-mnhe',
         _period: '2023-07-22',
@@ -156,7 +150,7 @@ function createTestDataSet() {
         'aaa3': 9,
         'aaa4': 10
     });
-    nightly.newEntry({
+    await nightly.newEntry({
         _uid: 'lkfkuxob-0av3',
         _period: '2023-07-23',
         _source: 'Test data',
@@ -165,7 +159,7 @@ function createTestDataSet() {
         'aaa3': 5,
         'aaa4': 9
     });
-    nightly.newEntry({
+    await nightly.newEntry({
         _period: '2023-07-21',
         _created: '2023-07-20T22:02:03Z',
         _updated: '2023-07-20T22:02:03Z',
@@ -176,27 +170,27 @@ function createTestDataSet() {
         'aaa3': 6,
         'aaa4': 5
     });
-    book.newEntry({
+    await book.newEntry({
         'ddd1': "Oh the places you'll go!"
     })
-    book.newEntry({
+    await book.newEntry({
         _period: '2025-01-02T15:21:49',
         'ddd1': "The Time Traveller"
     })
-    book.newEntry({
+    await book.newEntry({
         _period: '2022-10-04T18:43:22',
         'ddd1': "The Time Traveller 2"
     });
-    movies.newEntry({
+    await movies.newEntry({
         _period: '2023-07-24T13:15:00',
         'Name': 'Barbie',
         'First Watch?': true
     });
-    movies.newEntry({
+    await movies.newEntry({
         _period: '2023-07-24T18:45:00',
         'ccc1': 'Oppenheimer',
         'ccc2': true
     });
 
-    quote.setPointVal('bbb2', 'Michael SCOTT').save();
+    await quote.setPointVal('bbb2', 'Michael SCOTT').save();
 }
