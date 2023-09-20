@@ -236,9 +236,9 @@ export class AsyncYaml implements pdw.AsyncDataStore {
 
 export class AsyncCSV implements pdw.AsyncDataStore {
     //@ts-expect-error
-    async importFrom(filepath: string): pdw.CompleteDataset {
+    async importFrom(filepath: string, useFs = true): pdw.CompleteDataset {
         console.log('loading...');
-        XLSX.set_fs(fs);
+        if(useFs) XLSX.set_fs(fs);
         let loadedWb = XLSX.readFile(filepath);
         const shts = loadedWb.SheetNames;
         const pdwRef = pdw.PDW.getInstance();
@@ -340,8 +340,8 @@ export class AsyncCSV implements pdw.AsyncDataStore {
         }
     }
 
-    exportTo(allData: pdw.CompleteDataset, filename: string) {
-        XLSX.set_fs(fs);
+    exportTo(allData: pdw.CompleteDataset, filename: string, useFs = true) {
+        if(useFs) XLSX.set_fs(fs);
         const wb = XLSX.utils.book_new();
         const data: string[][] = []
         data.push(['Row Type', ...combinedTabularHeaders])
@@ -488,8 +488,8 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
     static tagShtName = '!Tags';
     static pointShtName = '!DefPoints';
 
-    exportTo(data: pdw.CompleteDataset, filename: string) {
-        XLSX.set_fs(fs);
+    exportTo(data: pdw.CompleteDataset, filename: string, useFs = true) {
+        if(useFs) XLSX.set_fs(fs);
         const wb = XLSX.utils.book_new();
 
         if (data.overview !== undefined) {
@@ -612,7 +612,7 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
         ]
     }
 
-    async importFrom(filepath: string): Promise<pdw.CompleteDataset> {
+    async importFrom(filepath: string, useFs = true): Promise<pdw.CompleteDataset> {
         /**
          * Note to self: ran into an issue with XLSX.JS wherein it doesn't like opening
          * files with the .xlsx file type here on Mac. You could fight it later, perhaps.
@@ -622,7 +622,7 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
             defs: [],
             entries: []
         }
-        XLSX.set_fs(fs);
+        if(useFs) XLSX.set_fs(fs);
         let loadedWb = XLSX.readFile(filepath);
         // let loadedWb = XLSX.
         const shts = loadedWb.SheetNames;
