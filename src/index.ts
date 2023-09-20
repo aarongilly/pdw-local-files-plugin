@@ -5,7 +5,7 @@ import { exportToFile, importFromFile } from './fileAsyncDataStores.js';
 const pdwRef = pdw.PDW.getInstance();
 
 await createTestDataSet();
-// await importFromFile('test-files/test.csv');
+// await importFromFile('test-files/test.xlsx');
 
 let all = await pdwRef.getAll({includeDeleted: 'yes'});
 

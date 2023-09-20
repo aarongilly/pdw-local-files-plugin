@@ -35,7 +35,6 @@ export class AsyncJson implements pdw.AsyncDataStore {
         fs.writeFile(filepath, json, 'utf8', () => { });
     }
 
-    //@ts-expect-error
     async importFrom(filepath: string): Promise<pdw.CompleteDataset> {
         const file = JSON.parse(fs.readFileSync(filepath).toString());
         const returnData: pdw.CompleteDataset = {
@@ -89,8 +88,8 @@ export class AsyncYaml implements pdw.AsyncDataStore {
         }
         this.translateFromYamlFormat(returnData);
         const pdwRef = pdw.PDW.getInstance();
-        if (returnData.defs !== undefined) await pdwRef.setDefs([],returnData.defs);
-        if (returnData.entries !== undefined) await pdwRef.setEntries([],returnData.entries);
+        if (returnData.defs !== undefined) await pdwRef.setDefs([], returnData.defs);
+        if (returnData.entries !== undefined) await pdwRef.setEntries([], returnData.entries);
 
         returnData = pdw.PDW.addOverviewToCompleteDataset(returnData, filepath);
 
@@ -163,7 +162,7 @@ export class AsyncYaml implements pdw.AsyncDataStore {
     }
 
     translateToYamlFormat(data: pdw.CompleteDataset) {
-        
+
         let staticCopy = JSON.parse(JSON.stringify(data));
         if (staticCopy.overview !== undefined) {
             let temporal = pdw.parseTemporalFromEpochStr(staticCopy.overview.lastUpdated);
@@ -244,12 +243,12 @@ export class AsyncCSV implements pdw.AsyncDataStore {
         const shts = loadedWb.SheetNames;
         const pdwRef = pdw.PDW.getInstance();
         const sht = loadedWb.Sheets[shts[0]];
-        let elements = XLSX.utils.sheet_to_json(sht, {raw:false}) as pdw.DefLike[];
+        let elements = XLSX.utils.sheet_to_json(sht, { raw: false }) as pdw.DefLike[];
 
         let rawDefs: pdw.DefData[] = elements.filter(e => e['Row Type'] === 'Def') as pdw.DefData[];
         let rawPointDefs: pdw.PointDefData[] = elements.filter(e => e['Row Type'] === 'PointDef') as pdw.PointDefData[];
         let rawEntries: pdw.EntryData[] = elements.filter(e => e['Row Type'] === 'Entry') as pdw.EntryData[];
-        
+
         let defs = rawDefs.map(rd => makeDef(rd));
         let entries = rawEntries.map(re => makeEntry(re));
         rawPointDefs.forEach((rpd: pdw.PointDefData) => {
@@ -266,7 +265,7 @@ export class AsyncCSV implements pdw.AsyncDataStore {
 
         await pdwRef.setDefs([], (<pdw.DefData[]>defs));
         await pdwRef.setEntries([], (<pdw.EntryData[]>entries));
-        
+
         return {
             defs: defs,
             entries: entries,
@@ -613,12 +612,11 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
         ]
     }
 
-    importFrom(filepath: string): pdw.CompleteDataset {
+    async importFrom(filepath: string): Promise<pdw.CompleteDataset> {
         /**
          * Note to self: ran into an issue with XLSX.JS wherein it doesn't like opening
          * files with the .xlsx file type here on Mac. You could fight it later, perhaps.
          */
-        throw new Error('Unimplemented due to Apple Numbers bug, I think')
         console.log('loading...');
         let returnData: pdw.CompleteDataset = {
             defs: [],
@@ -630,31 +628,67 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
         const shts = loadedWb.SheetNames;
         const pdwRef = pdw.PDW.getInstance();
 
+        console.log(shts)
+
+        if (!shts.some(name => name === AsyncExcelTabular.pointShtName)) {
+            console.warn('No PointDefs sheet found, skipping Defs import');
+        } else {
+            const defSht = loadedWb.Sheets[AsyncExcelTabular.defShtName];
+            let defBaseRawArr = XLSX.utils.sheet_to_json(defSht, { raw: false}) as pdw.DefLike[];
+            const pdSht = loadedWb.Sheets[AsyncExcelTabular.pointShtName];
+            let pdRawArr = XLSX.utils.sheet_to_json(pdSht, { raw: false }) as pdw.DefLike[];
+            returnData.defs = [];
+
+            defBaseRawArr.forEach(rawDef => {
+                const points = pdRawArr.filter(row => row["def._uid"] === rawDef._uid);
+                const parsedDef = AsyncExcelTabular.parseExcelDef(rawDef, points);
+                returnData.defs.push(parsedDef as pdw.DefData);
+            });
+
+            await pdwRef.setDefs(returnData.defs);
+        }
+
         shts.forEach(name => {
             if (name === AsyncExcelTabular.pointShtName) return; //skip
-            if (name === AsyncExcelTabular.defShtName) {
-                if (!shts.some(name => name === AsyncExcelTabular.pointShtName)) {
-                    console.warn('No PointDefs sheet found, skipping Defs import');
-                } else {
-                    const defSht = loadedWb.Sheets[AsyncExcelTabular.defShtName];
-                    let defBaseRawArr = XLSX.utils.sheet_to_json(defSht) as pdw.DefLike[];
-                    const pdSht = loadedWb.Sheets[AsyncExcelTabular.pointShtName];
-                    let pdRawArr = XLSX.utils.sheet_to_json(defSht) as pdw.DefLike[];
-                    returnData.defs = [];
-
-                    defBaseRawArr.forEach(rawDef => {
-                        const points = pdRawArr.filter(row => row._did === rawDef._did);
-                        AsyncExcelTabular.parseExcelDef(rawDef, points);
-                    });
-
-                    pdwRef.setDefs(returnData.defs);
-                }
-            }
+            if (name === AsyncExcelTabular.overViewShtName) return; //skip
+            if (name === AsyncExcelTabular.defShtName) return; //skip
+            const assDef = pdwRef.manifest.find(def=>def.lbl===name)!;
+            const entrySht = loadedWb.Sheets[name];
+            const entryRawArr = XLSX.utils.sheet_to_json(entrySht, { raw: false }) as pdw.EntryLike[];
+            const entries = entryRawArr.map(rawEntry=>parseRawEntry(rawEntry, assDef));
+            returnData.entries.push(...entries);
         });
+        await pdwRef.setEntries(returnData.entries);
 
         returnData = pdw.PDW.addOverviewToCompleteDataset(returnData, filepath);
-
         return returnData;
+
+        function parseRawEntry(entryRow: any, def: pdw.Def): pdw.EntryData{
+            let entryData: pdw.EntryData = {
+                _eid: entryRow._uid,
+                _note: entryRow._note,
+                _period: entryRow._period,
+                _did: entryRow._did,
+                _source: entryRow._source,
+                _uid: entryRow._uid,
+                _deleted: entryRow._deleted,
+                _created: '',
+                _updated: ''
+            }
+            
+            if(typeof entryData._deleted === 'string') entryData._deleted = (<string>entryData._deleted).toUpperCase() === "TRUE";
+            entryData._created = AsyncExcelTabular.makeEpochStrFromExcelDate(entryRow._created);
+            entryData._updated = AsyncExcelTabular.makeEpochStrFromExcelDate(entryRow._updated);
+
+            Object.keys(entryRow).forEach(key=>{
+                if(key.substring(0,1)==="_") return
+                const assPd = def.getPoint(key);
+                entryData[assPd.pid] = entryRow[key];
+            })
+
+            if(!pdw.Entry.isEntryData(entryData)) throw new Error("Error in parsing an entry row");
+            return entryData
+        }
     }
 
     /**
@@ -665,30 +699,28 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
      */
     static parseExcelDef(defRow: any, points: any): pdw.DefLike {
         //check structure
-        if (defRow._deleted == undefined
-            || defRow._did == undefined)
-            throw new Error('Cannot parseExcelDefRow for ', defRow);
-
-        defRow = AsyncExcelTabular.parseExcelFirstFourColumns(defRow);
-
-        defRow._did = defRow._did.toString(); //in case I got unlucky with an all-numeric SmallID
-
-        if (!pdw.Def.isDefData(defRow)) throw new Error('Failed to correctly parseExcelDefRow for ', defRow);
-
-        return defRow
-    }
-
-    static parseExcelFirstFourColumns(elementRowData: any): any {
-        if (typeof elementRowData._deleted === 'boolean') {
-            elementRowData._deleted = elementRowData._deleted;
-        } else {
-            elementRowData._deleted = elementRowData._deleted.toUpperCase() == 'TRUE';
+        if (defRow._deleted == undefined || defRow._did == undefined) throw new Error('Cannot parseExcelDefRow for ', defRow);
+        const defData: pdw.DefData = {
+            _did: defRow._did.toString(), //in case I got unlucky with an all-numeric SmallID
+            _lbl: defRow._lbl,
+            _desc: defRow._desc,
+            _emoji: defRow._emoji,
+            _tags: JSON.parse(defRow._tags),
+            _scope: defRow._scope,
+            _pts: points.map((point:any)=>this.parseExcelPointDefRow(point)),
+            _uid: defRow._uid,
+            _deleted: defRow._deleted, //checked for type later
+            _created: '',
+            _updated: ''
         }
 
-        elementRowData._created = AsyncExcelTabular.makeEpochStrFromExcelDate(elementRowData._created)
-        elementRowData._updated = AsyncExcelTabular.makeEpochStrFromExcelDate(elementRowData._updated)
+        if(typeof defRow._deleted === 'string') defData._deleted = defRow._deleted.toUpperCase() === "TRUE";
+        defData._created = AsyncExcelTabular.makeEpochStrFromExcelDate(defRow._created);
+        defData._updated = AsyncExcelTabular.makeEpochStrFromExcelDate(defRow._updated);
+        
+        if (!pdw.Def.isDefData(defData)) throw new Error('Failed to correctly parseExcelDefRow for ', defRow);
 
-        return elementRowData;
+        return defData
     }
 
     /**
@@ -699,18 +731,8 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
      */
     static makeEpochStrFromExcelDate(dateCellVal: any): any {
         if (typeof dateCellVal === 'string') {
-            try {
-                pdw.parseTemporalFromEpochStr(dateCellVal);
-                return dateCellVal
-            } catch (e) {
-                try {
-                    let temp = Temporal.Instant.fromEpochMilliseconds(new Date(dateCellVal).getTime()).toZonedDateTimeISO(Temporal.Now.timeZone());
-                    return pdw.makeEpochStrFrom(temp);
-                } catch (etwo) {
-                    console.error('Failed to make this into an EpochStr:', dateCellVal);
-                    throw new Error('Could not parse Excel date');
-                }
-            }
+            if(pdw.isValidEpochStr(dateCellVal)) return pdw.parseTemporalFromEpochStr(dateCellVal);
+            return pdw.makeEpochStrFrom(Temporal.Instant.fromEpochMilliseconds(new Date(dateCellVal).getTime()).toZonedDateTimeISO(Temporal.Now.timeZone()));
         }
         if (typeof dateCellVal === 'number') {
             return pdw.makeEpochStrFrom(Temporal.Instant.fromEpochMilliseconds((dateCellVal - (25567 + 1)) * 86400 * 1000).toZonedDateTimeISO(Temporal.Now.timeZone()));
@@ -724,21 +746,24 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
      * @returns 
      */
     static parseExcelPointDefRow(pointDefRow: any): pdw.PointDefLike {
-        //check structure
-        if (pointDefRow._created == undefined
-            || pointDefRow._deleted == undefined
-            || pointDefRow._did == undefined
-            || pointDefRow._pid == undefined)
-            throw new Error('Cannot parseExcelDefRow for ', pointDefRow);
-
-        pointDefRow = AsyncExcelTabular.parseExcelFirstFourColumns(pointDefRow);
-
-        pointDefRow._did = pointDefRow._did.toString(); //in case I got unlucky with an all-numeric SmallID
+        let pointDef = {
+            _pid: pointDefRow._pid,
+            _lbl: pointDefRow._lbl,
+            _desc: pointDefRow._desc,
+            _emoji: pointDefRow._emoji,
+            _type: pointDefRow._type.toUpperCase(),
+            _rollup: pointDefRow._rollup.toUpperCase(),
+            _hide: pointDefRow._hide,
+            _opts: JSON.parse(pointDefRow._opts)
+        };
         pointDefRow._pid = pointDefRow._pid.toString(); //in case I got unlucky with an all-numeric SmallID
 
-        if (!pdw.PointDef.isPointDefData(pointDefRow)) throw new Error('Failed to correctly parseExcelDefRow for ', pointDefRow);
+        if (typeof pointDef._hide === 'string')
+        pointDef._hide = pointDef._hide.toUpperCase() === "TRUE";
 
-        return pointDefRow
+        if (!pdw.PointDef.isPointDefData(pointDef)) throw new Error('Failed to correctly parseExcelDefRow for ', pointDefRow);
+
+        return pointDef
     }
 
     static parseExcelEntryRow(entryRow: any): pdw.EntryLike {
@@ -747,7 +772,7 @@ export class AsyncExcelTabular implements pdw.AsyncDataStore {
             || entryRow._did == undefined)
             throw new Error('Cannot parseExcelEntryRow for ', entryRow);
 
-        entryRow = AsyncExcelTabular.parseExcelFirstFourColumns(entryRow);
+        // entryRow = AsyncExcelTabular.parseExcelFirstFourColumns(entryRow);
 
         entryRow._did = entryRow._did.toString(); //in case I got unlucky with an all-numeric SmallID
         if (entryRow._note === undefined) entryRow._note = '';
