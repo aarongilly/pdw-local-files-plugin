@@ -2,8 +2,8 @@ import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as YAML from 'yaml';
 import { Temporal } from 'temporal-polyfill';
-// import * as pdw from 'pdw/out/pdw'; //UNCOMMENT WHEN PUBLISHING
-import * as pdw from '../../pdw/out/pdw.js' //ONLY WORKS LOCALLY
+import * as pdw from 'pdw'; //UNCOMMENT WHEN PUBLISHING
+// import * as pdw from '../../pdw/out/pdw.js' //ONLY WORKS LOCALLY
 
 //#region ### EXPORTED FUNCTIONS ###
 export function exportToFile(filepath: string, data: pdw.CompleteDataset) {
