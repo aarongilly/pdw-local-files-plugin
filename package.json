@@ -1,5 +1,5 @@
 {
-  "name": "pdw-files-plugin",
+  "name": "pdw-local-files-plugin",
   "version": "0.0.4",
   "type": "module",
   "main": "/fileAsyncDataStores.js",
@@ -18,7 +18,7 @@
   "dependencies": {
     "fast-csv": "^4.3.6",
     "fs": "^0.0.1-security",
-    "pdw": "^0.0.24",
+    "pdw": "^0.0.31",
     "typescript": "^5.1.6",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.0/xlsx-0.20.0.tgz",
     "yaml": "^2.3.1"

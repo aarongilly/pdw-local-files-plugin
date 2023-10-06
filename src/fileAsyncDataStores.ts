@@ -14,7 +14,7 @@ export function exportToFile(filepath: string, data: pdw.CompleteDataset) {
     if (fileType === 'csv') return new AsyncCSV().exportTo(data, filepath);
     throw new Error('Unimplemented export type: ' + fileType)
 }
-
+ 
 export async function importFromFile(filepath: string) {
     const fileType = inferFileType(filepath)
     if (fileType === 'excel') return await new AsyncExcelTabular().importFrom(filepath);
